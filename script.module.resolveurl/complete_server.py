@@ -100,35 +100,66 @@ def resolve_url_with_resolveurl(url):
         return None
 
 def resolve_with_manual_resolver_search(url):
-    """Manually search through resolvers if main resolve fails"""
+    """Manually search through resolvers using domain matching"""
     try:
         logger.info(f"Manual resolver search for: {url}")
         
-        resolvers = get_all_resolvers()
-        host = urlparse(url).netloc.lower() if url else None
+        # Extract domain from URL for efficient resolver matching
+        from urllib.parse import urlparse
+        parsed_url = urlparse(url)
+        domain = parsed_url.netloc.lower() if parsed_url.netloc else ''
         
-        # Sort by priority
-        resolvers.sort(key=lambda x: getattr(x, 'priority', getattr(x, '_get_priority', lambda: 100)()))
+        # Get only relevant resolvers for this domain using ResolveURL's built-in logic
+        try:
+            import resolveurl
+            relevant_resolvers = resolveurl.relevant_resolvers(
+                domain=domain, 
+                include_universal=True, 
+                include_popups=True, 
+                include_external=True,
+                include_disabled=False, 
+                order_matters=True
+            )
+            logger.info(f"Found {len(relevant_resolvers)} relevant resolvers for domain: {domain}")
+        except Exception as e:
+            logger.warning(f"Could not get relevant resolvers: {e}, falling back to all resolvers")
+            relevant_resolvers = get_all_resolvers()
+            # Filter by domain manually
+            filtered_resolvers = []
+            for resolver_class in relevant_resolvers:
+                try:
+                    if hasattr(resolver_class, 'domains'):
+                        for res_domain in resolver_class.domains:
+                            if domain and (domain in res_domain.lower() or res_domain == '*'):
+                                filtered_resolvers.append(resolver_class)
+                                break
+                except:
+                    continue
+            relevant_resolvers = filtered_resolvers
+            logger.info(f"Manually filtered to {len(relevant_resolvers)} relevant resolvers")
         
-        for resolver_class in resolvers:
+        # Try each relevant resolver
+        for resolver_class in relevant_resolvers:
             try:
                 # Skip disabled resolvers
                 if hasattr(resolver_class, '_is_enabled') and not resolver_class._is_enabled():
                     continue
                 
+                logger.info(f"Trying resolver: {resolver_class.name}")
+                
                 # Create resolver instance
                 resolver = resolver_class()
                 
                 # Check if resolver handles this URL
-                hmf = HostedMediaFile(url=url)
-                if hasattr(hmf, 'valid_url') and hmf.valid_url():
-                    logger.info(f"Trying resolver: {resolver_class.name}")
-                    
-                    # Try to resolve
-                    result = hmf.resolve()
-                    if result and result != False:
-                        logger.info(f"Successfully resolved with {resolver_class.name}: {url} -> {result}")
-                        return result
+                if hasattr(resolver, 'valid_url') and resolver.valid_url(url, domain):
+                    # Get host and media_id
+                    host, media_id = resolver.get_host_and_id(url)
+                    if host and media_id:
+                        # Try to resolve
+                        result = resolver.get_media_url(host, media_id)
+                        if result and result != False:
+                            logger.info(f"Successfully resolved with {resolver_class.name}: {url} -> {result}")
+                            return result
                         
             except Exception as e:
                 logger.debug(f"Resolver {resolver_class.name} failed: {e}")

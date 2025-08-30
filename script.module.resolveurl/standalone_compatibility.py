@@ -260,13 +260,122 @@ class MockHelpers:
     
     @staticmethod
     def append_headers(headers):
-        return headers or {}
+        return '|%s' % '&'.join(['%s=%s' % (key, headers[key]) for key in headers]) if headers else ''
     
     @staticmethod
     def gibberish():
         import random
         import string
         return ''.join(random.choices(string.ascii_lowercase + string.digits, k=8))
+    
+    @staticmethod
+    def b64decode(data, binary=False):
+        """Base64 decode function"""
+        import base64
+        import six
+        if len(data) % 4 != 0:
+            data += '=' * (-len(data) % 4)
+        result = base64.b64decode(data)
+        return result if binary else six.ensure_str(result)
+    
+    @staticmethod
+    def b64encode(data):
+        """Base64 encode function"""
+        import base64
+        import six
+        return six.ensure_str(base64.b64encode(data if isinstance(data, bytes) else six.b(data)))
+    
+    @staticmethod
+    def get_hidden(html, form_id=None, index=None, include_submit=True):
+        """Extract hidden form fields from HTML"""
+        hidden = {}
+        if form_id:
+            pattern = r'''<form [^>]*(?:id|name)\s*=\s*['"]?%s['"]?[^>]*>(.*?)</form>''' % (form_id)
+        else:
+            pattern = '''<form[^>]*>(.*?)</form>'''
+
+        for i, form in enumerate(re.finditer(pattern, html, re.DOTALL | re.I)):
+            if index is None or i == index:
+                for field in re.finditer('''<input [^>]*type=['"]?hidden['"]?[^>]*>''', form.group(1)):
+                    match = re.search(r'''name\s*=\s*['"]([^'"]+)''', field.group(0))
+                    match1 = re.search(r'''value\s*=\s*['"]([^'"]*)''', field.group(0))
+                    if match and match1:
+                        hidden[match.group(1)] = match1.group(1)
+
+                if include_submit:
+                    match = re.search('''<input [^>]*type=['"]?submit['"]?[^>]*>''', form.group(1))
+                    if match:
+                        name = re.search(r'''name\s*=\s*['"]([^'"]+)''', match.group(0))
+                        value = re.search(r'''value\s*=\s*['"]([^'"]*)''', match.group(0))
+                        if name and value:
+                            hidden[name.group(1)] = value.group(1)
+        return hidden
+    
+    @staticmethod
+    def get_packed_data(html):
+        """Extract packed JavaScript data"""
+        # Simple fallback - return empty string for now
+        # Full implementation would require jsunpack module
+        return ''
+    
+    @staticmethod
+    def get_redirect_url(url, headers=None, form_data=None):
+        """Get redirect URL"""
+        try:
+            import requests
+            if form_data:
+                response = requests.post(url, data=form_data, headers=headers or {}, allow_redirects=False, timeout=10)
+            else:
+                response = requests.get(url, headers=headers or {}, allow_redirects=False, timeout=10)
+            return response.headers.get('Location', url)
+        except:
+            return url
+    
+    @staticmethod
+    def get_media_url(web_url, patterns=None, generic_patterns=True, referer=None, **kwargs):
+        """Generic media URL extraction"""
+        try:
+            import requests
+            headers = {'User-Agent': MockHelpers.get_ua()}
+            if referer:
+                headers['Referer'] = referer
+            
+            response = requests.get(web_url, headers=headers, timeout=10)
+            html = response.text
+            
+            # Try to find video URLs
+            video_patterns = patterns or []
+            if generic_patterns:
+                video_patterns.extend([
+                    r'"(https?://[^"]+\.mp4[^"]*)"',
+                    r'"file":\s*"([^"]+\.mp4[^"]*)"',
+                    r'"url":\s*"([^"]+\.mp4[^"]*)"',
+                ])
+            
+            for pattern in video_patterns:
+                matches = re.findall(pattern, html, re.I)
+                for match in matches:
+                    if match.startswith('http'):
+                        return match + MockHelpers.append_headers(headers)
+            
+            return False
+        except:
+            return False
+    
+    @staticmethod
+    def pick_source(sources, auto_pick=True):
+        """Pick the best source from a list"""
+        if not sources:
+            return False
+        if len(sources) == 1:
+            return sources[0][1]
+        # Auto-pick the first (usually highest quality)
+        return sources[0][1]
+    
+    @staticmethod
+    def scrape_subtitles(html, web_url):
+        """Extract subtitles from HTML"""
+        return {}  # Simple fallback
     
     @staticmethod 
     def scrape_sources(html, result=None, patterns=None, generic_patterns=None):

@@ -75,7 +75,20 @@ class MockKodi:
     """Mock Kodi module"""
     @staticmethod
     def get_setting(setting_id):
-        return _settings_store.get(setting_id, '')
+        # Return setting from store if it exists
+        if setting_id in _settings_store:
+            return _settings_store[setting_id]
+        
+        # Default settings for resolvers - enable all resolvers by default
+        if setting_id.endswith('_enabled'):
+            return 'true'
+        if setting_id.endswith('_login'):
+            return 'true'
+        if setting_id.endswith('_priority'):
+            return '100'
+        
+        # Return empty string for unknown settings (existing behavior)
+        return ''
     
     @staticmethod 
     def set_setting(setting_id, value):

@@ -327,6 +327,27 @@ class MockXBMCGUI:
         def select(heading, options):
             # For standalone mode, just return first option
             return 0 if options else -1
+    
+    class ControlImage:
+        def __init__(self, x, y, w, h, filename):
+            self.x = x
+            self.y = y 
+            self.w = w
+            self.h = h
+            self.filename = filename
+    
+    class WindowDialog:
+        def __init__(self):
+            self.controls = []
+        
+        def addControl(self, control):
+            self.controls.append(control)
+        
+        def show(self):
+            pass
+        
+        def close(self):
+            pass
 
 class MockXBMCAddon:
     def __init__(self, addon_id='script.module.resolveurl'):
@@ -353,6 +374,7 @@ sys.modules['xbmcvfs'] = MockXBMCVFS()
 sys.modules['xbmcgui'] = MockXBMCGUI()
 sys.modules['xbmcaddon'] = MockXBMCAddon
 sys.modules['kodi_six'] = type('MockKodiSix', (), {
+    'xbmc': MockXBMC(),
     'xbmcvfs': MockXBMCVFS(),
     'xbmcgui': MockXBMCGUI(),
     'xbmcaddon': MockXBMCAddon
@@ -372,22 +394,155 @@ sys.modules['resolveurl.lib.log_utils'] = type('MockLogUtils', (), {
     })
 })()
 
-# Mock additional modules that may be needed
-sys.modules['resolveurl.lib'] = type('MockLib', (), {
-    'kodi': MockKodi(),
-    'net': type('MockNetModule', (), {
-        'Net': MockNet,
-        'get_ua': MockHelpers.get_ua
-    })(),
-    'cache': MockCache(),
-    'helpers': MockHelpers(),
-    'log_utils': type('MockLogUtils', (), {
-        'Logger': type('Logger', (), {
-            'get_logger': lambda name=None: MockLogger()
-        })
-    })(),
-    'pyaes': type('MockPyAES', (), {})()
-})()
+# Mock JavaScript processing modules
+class MockJSUnpack:
+    """Mock JavaScript unpacking functionality"""
+    @staticmethod
+    def unpack(packed_js):
+        return packed_js  # Return unpacked or original JS
+    
+    @staticmethod
+    def detect(packed_js):
+        return "eval" in packed_js.lower()
+
+class MockJSUnhunt:
+    """Mock JavaScript unhunting functionality"""
+    @staticmethod
+    def unhunt(js):
+        return js  # Return processed or original JS
+
+class MockJSUnfuck:
+    """Mock JavaScript unfucking functionality"""
+    @staticmethod  
+    def unfuck(js):
+        return js  # Return processed or original JS
+
+class MockJJDecode:
+    """Mock JJ decoding functionality"""
+    @staticmethod
+    def decode(encoded):
+        return encoded  # Return decoded or original string
+
+class MockAADecode:
+    """Mock AA decoding functionality"""
+    @staticmethod
+    def decode(encoded):
+        return encoded  # Return decoded or original string
+
+class MockUnjuice:
+    """Mock unjuice functionality"""
+    @staticmethod
+    def unjuice(js):
+        return js  # Return processed or original JS
+
+class MockUnwise:
+    """Mock unwise functionality"""
+    @staticmethod 
+    def unwise(js):
+        return js  # Return processed or original JS
+
+class MockRijndael:
+    """Mock Rijndael encryption"""
+    @staticmethod
+    def decrypt(data, key):
+        return data  # Return dummy decrypted data
+    
+    @staticmethod
+    def encrypt(data, key):
+        return data  # Return dummy encrypted data
+
+class MockRC4:
+    """Mock RC4 encryption"""
+    @staticmethod
+    def decrypt(data, key):
+        return data  # Return dummy decrypted data
+    
+    @staticmethod
+    def encrypt(data, key):
+        return data  # Return dummy encrypted data
+
+class MockPBKDF2:
+    """Mock PBKDF2 key derivation"""
+    @staticmethod
+    def pbkdf2(password, salt, iterations=1000, dklen=32):
+        return b'dummy_key' * (dklen // 9 + 1)[:dklen]
+
+class MockStrings:
+    """Mock strings module"""
+    @staticmethod
+    def encode(s):
+        return s.encode('utf-8') if isinstance(s, str) else s
+    
+    @staticmethod
+    def decode(b):
+        return b.decode('utf-8') if isinstance(b, bytes) else b
+
+class MockRecaptchaV2:
+    """Mock Recaptcha V2"""
+    @staticmethod
+    def solve_recaptcha(site_key, page_url):
+        return "dummy_recaptcha_response"
+
+class MockCaptchaWindow:
+    """Mock captcha window"""
+    @staticmethod
+    def show_captcha(image_data):
+        return "dummy_captcha_response"
+
+class MockCustomProgressDialog:
+    """Mock custom progress dialog"""
+    def __init__(self):
+        pass
+    
+    def update(self, percent, message=""):
+        pass
+    
+    def close(self):
+        pass
+
+class MockPNG:
+    """Mock PNG handling"""
+    @staticmethod
+    def decode(data):
+        return data
+    
+    @staticmethod
+    def encode(data):
+        return data
+
+class MockURLDispatcher:
+    """Mock URL dispatcher"""
+    @staticmethod
+    def register(pattern, func):
+        pass
+
+class MockJSCrypto:
+    """Mock JavaScript crypto functionality"""
+    @staticmethod
+    def jscrypto():
+        return MockJSCrypto()
+    
+    @staticmethod
+    def decrypt(data, key):
+        return data  # Return dummy decrypted data
+    
+    @staticmethod
+    def encrypt(data, key):
+        return data  # Return dummy encrypted data
+
+class MockWebSocket:
+    """Mock WebSocket functionality"""
+    def __init__(self, url):
+        self.url = url
+    
+    def send(self, data):
+        pass
+    
+    def recv(self):
+        return "dummy_response"
+    
+    def close(self):
+        pass
 
 # Mock pyaes module that's imported by common.py
 class MockPyAES:
@@ -409,8 +564,105 @@ class MockPyAES:
             self.key = key
             self.iv = iv
 
+# Mock CAPTCHA functionality
+class MockCaptchaLib:
+    """Mock captcha_lib module"""
+    @staticmethod
+    def get_response(img, x=450, y=225, w=400, h=130):
+        # Return dummy response for standalone mode
+        return "dummy_captcha_response"
+    
+    @staticmethod
+    def write_img(url=None, bin=None):
+        # Return dummy image path
+        return "/tmp/dummy_captcha.gif"
+        
+    @staticmethod
+    def resolve_text_captcha(url):
+        # Return dummy text captcha response
+        return "dummy_text_response"
+
+# Mock additional modules that may be needed - make it a proper module
+class MockLibModule:
+    """Mock lib module that behaves like a package"""
+    def __init__(self):
+        self.kodi = MockKodi()
+        self.net = type('MockNetModule', (), {
+            'Net': MockNet,
+            'get_ua': MockHelpers.get_ua
+        })()
+        self.cache = MockCache()
+        self.helpers = MockHelpers()
+        self.log_utils = type('MockLogUtils', (), {
+            'Logger': type('Logger', (), {
+                'get_logger': lambda name=None: MockLogger()
+            })
+        })()
+        self.pyaes = MockPyAES()
+        self.captcha_lib = MockCaptchaLib()
+        self.jsunpack = MockJSUnpack()
+        self.jsunhunt = MockJSUnhunt() 
+        self.jsunfuck = MockJSUnfuck()
+        self.jjdecode = MockJJDecode()
+        self.aadecode = MockAADecode()
+        self.unjuice = MockUnjuice()
+        self.unjuice2 = MockUnjuice()
+        self.unwise = MockUnwise()
+        self.rijndael = MockRijndael()
+        self.rc4 = MockRC4()
+        self.pbkdf2 = MockPBKDF2()
+        self.strings = MockStrings()
+        self.recaptcha_v2 = MockRecaptchaV2()
+        self.captcha_window = MockCaptchaWindow()
+        self.CustomProgressDialog = MockCustomProgressDialog
+        self.png = MockPNG()
+        self.url_dispatcher = MockURLDispatcher()
+        self.jscrypto = type('JSCryptoModule', (), {
+            'jscrypto': MockJSCrypto()
+        })()
+        self.websocket = type('WebSocketModule', (), {
+            'WebSocket': MockWebSocket
+        })()
+        
+        # Set __path__ to make it look like a package
+        self.__path__ = ['/dummy/lib/path']
+
+sys.modules['resolveurl.lib'] = MockLibModule()
+
 sys.modules['pyaes'] = MockPyAES()
-sys.modules['resolveurl.lib.pyaes'] = MockPyAES()
+
+# Add individual module references 
+mock_lib = sys.modules['resolveurl.lib']
+sys.modules['resolveurl.lib.kodi'] = mock_lib.kodi
+sys.modules['resolveurl.lib.net'] = mock_lib.net  
+sys.modules['resolveurl.lib.cache'] = mock_lib.cache
+sys.modules['resolveurl.lib.helpers'] = mock_lib.helpers
+sys.modules['resolveurl.lib.log_utils'] = mock_lib.log_utils
+sys.modules['resolveurl.lib.captcha_lib'] = mock_lib.captcha_lib
+sys.modules['resolveurl.lib.jsunpack'] = mock_lib.jsunpack
+sys.modules['resolveurl.lib.jsunhunt'] = mock_lib.jsunhunt
+sys.modules['resolveurl.lib.jsunfuck'] = mock_lib.jsunfuck
+sys.modules['resolveurl.lib.jjdecode'] = mock_lib.jjdecode
+sys.modules['resolveurl.lib.aadecode'] = mock_lib.aadecode
+sys.modules['resolveurl.lib.unjuice'] = mock_lib.unjuice
+sys.modules['resolveurl.lib.unjuice2'] = mock_lib.unjuice2
+sys.modules['resolveurl.lib.unwise'] = mock_lib.unwise
+sys.modules['resolveurl.lib.rijndael'] = mock_lib.rijndael
+sys.modules['resolveurl.lib.rc4'] = mock_lib.rc4
+sys.modules['resolveurl.lib.pbkdf2'] = mock_lib.pbkdf2
+sys.modules['resolveurl.lib.strings'] = mock_lib.strings
+sys.modules['resolveurl.lib.recaptcha_v2'] = mock_lib.recaptcha_v2
+sys.modules['resolveurl.lib.captcha_window'] = mock_lib.captcha_window
+sys.modules['resolveurl.lib.CustomProgressDialog'] = mock_lib.CustomProgressDialog
+sys.modules['resolveurl.lib.png'] = mock_lib.png
+sys.modules['resolveurl.lib.url_dispatcher'] = mock_lib.url_dispatcher
+sys.modules['resolveurl.lib.jscrypto'] = mock_lib.jscrypto
+sys.modules['resolveurl.lib.websocket'] = mock_lib.websocket
+sys.modules['resolveurl.lib.pyaes'] = mock_lib.pyaes
+
+# Mock subdirectory modules
+sys.modules['resolveurl.lib.jscrypto.jscrypto'] = mock_lib.jscrypto.jscrypto
+sys.modules['resolveurl.lib.websocket.WebSocket'] = mock_lib.websocket.WebSocket
 
 def get_ua():
     """Get user agent string"""
